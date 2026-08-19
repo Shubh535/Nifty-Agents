@@ -5,10 +5,9 @@ Technical indicator computation using pandas_ta.
 All functions return serialization-safe (NaN-free) dicts.
 """
 import math
-from typing import Optional
+
 import pandas as pd
 import yfinance as yf
-
 
 # ─── Sector Map ──────────────────────────────────────────────────────────────
 
@@ -55,13 +54,13 @@ TICKER_SECTOR_HINTS = {
 }
 
 
-def _get_sector_ticker(ticker: str) -> Optional[str]:
+def _get_sector_ticker(ticker: str) -> str | None:
     base = ticker.split(".")[0].upper()
     sector = TICKER_SECTOR_HINTS.get(base)
     return SECTOR_MAP.get(sector) if sector else "^NSEI"  # fallback: Nifty 50
 
 
-def _safe(val) -> Optional[float]:
+def _safe(val) -> float | None:
     """Convert NaN/inf to None for JSON safety."""
     if val is None:
         return None
@@ -119,9 +118,12 @@ def compute_indicators(ticker: str, period: str = "6mo") -> dict:
             macd_col    = next((c for c in cols if c.startswith("MACD_12")), None)
             signal_col  = next((c for c in cols if c.startswith("MACDs_")), None)
             hist_col    = next((c for c in cols if c.startswith("MACDh_")), None)
-            if macd_col:   macd_val   = _safe(macd_df[macd_col].iloc[i])
-            if signal_col: signal_val = _safe(macd_df[signal_col].iloc[i])
-            if hist_col:   hist_val   = _safe(macd_df[hist_col].iloc[i])
+            if macd_col:
+                macd_val = _safe(macd_df[macd_col].iloc[i])
+            if signal_col:
+                signal_val = _safe(macd_df[signal_col].iloc[i])
+            if hist_col:
+                hist_val = _safe(macd_df[hist_col].iloc[i])
 
         # BB columns
         bb_upper = bb_mid = bb_lower = None
@@ -130,9 +132,12 @@ def compute_indicators(ticker: str, period: str = "6mo") -> dict:
             ub = next((c for c in cols if c.startswith("BBU_")), None)
             mb = next((c for c in cols if c.startswith("BBM_")), None)
             lb = next((c for c in cols if c.startswith("BBL_")), None)
-            if ub: bb_upper = _safe(bb_df[ub].iloc[i])
-            if mb: bb_mid   = _safe(bb_df[mb].iloc[i])
-            if lb: bb_lower = _safe(bb_df[lb].iloc[i])
+            if ub:
+                bb_upper = _safe(bb_df[ub].iloc[i])
+            if mb:
+                bb_mid = _safe(bb_df[mb].iloc[i])
+            if lb:
+                bb_lower = _safe(bb_df[lb].iloc[i])
 
         candles.append({
             "time":     date_str,

@@ -8,10 +8,10 @@ import json
 import sqlite3
 import threading
 import uuid
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import date, datetime
 from pathlib import Path
-from typing import AsyncGenerator
 
 import yfinance as yf
 from fastapi import FastAPI, HTTPException
@@ -20,8 +20,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from tradingagents.default_config import DEFAULT_CONFIG
-from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.graph.signal_processing import SignalProcessor
+from tradingagents.graph.trading_graph import TradingAgentsGraph
 
 # ─── DB Setup ────────────────────────────────────────────────────────────────
 
@@ -146,13 +146,9 @@ def run_analysis_worker(run_id: str, ticker: str, analysis_date: str, analysts: 
         graph = TradingAgentsGraph(analysts, config=config, debug=False)
 
         # Use the same streaming approach as the CLI
-        from tradingagents.graph.analyst_execution import (
-            build_analyst_execution_plan,
-            get_initial_analyst_node,
-            sync_analyst_tracker_from_chunk,
-        )
+        from tradingagents.graph.analyst_execution import build_analyst_execution_plan
 
-        analyst_execution_plan = build_analyst_execution_plan(analysts)
+        build_analyst_execution_plan(analysts)
         instrument_context = graph.resolve_instrument_context(ticker, "stock")
         init_state = graph.propagator.create_initial_state(
             ticker, analysis_date, asset_type="stock", instrument_context=instrument_context
@@ -161,8 +157,6 @@ def run_analysis_worker(run_id: str, ticker: str, analysis_date: str, analysts: 
 
         trace = []
         completed_analysts = set()
-        processed_ids = set()
-
         for chunk in graph.graph.stream(init_state, **args):
             trace.append(chunk)
 
@@ -373,7 +367,7 @@ def get_chart(ticker: str, period: str = "3mo"):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/api/portfolio")
@@ -418,4 +412,4 @@ def get_quote(ticker: str):
             "currency": info.currency,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
